@@ -1,0 +1,301 @@
+package ribau;
+
+import java.util.ArrayList;
+import was.GameBoard;
+import was.GameLocation;
+import was.Move;
+import was.WolfPlayer;
+
+/**
+ *
+ * @author ribau
+ */
+public class Wolf extends WolfPlayer {
+
+    int o = -1;
+    GameLocation firstT;
+    GameLocation primaryT;
+    GameLocation pastLocation;
+    GameLocation secondaryT;
+    GameLocation close;
+    GameBoard board = null;
+    ArrayList<Waypoint> open;
+    ArrayList<Waypoint> closed;
+    ArrayList<Waypoint> path;
+    ArrayList<GameLocation> sheeps;
+
+    public Wolf() {
+        super();
+        close = null;
+        firstT = null;
+        primaryT = null;
+        secondaryT = null;
+        pastLocation = null;
+        path = new ArrayList();
+        open = new ArrayList();
+        closed = new ArrayList();
+        sheeps = new ArrayList();
+
+    }
+
+    public void initialize() {
+        board = getGameBoard();
+    }
+
+    public static double piThag(GameLocation start, GameLocation end) {
+        int disx = start.x - end.x;
+        int disy = start.y - end.y;
+        double distance = Math.sqrt((disx * disx) + (disy * disy));
+        return distance;
+    }
+
+    public ArrayList clear(ArrayList<Waypoint> toClear) {
+        Waypoint temp = toClear.get(toClear.size() - 1);
+        ArrayList<Waypoint> cleared = new ArrayList();
+        while (temp.parent != null) {
+            cleared.add(0, temp);
+            temp = temp.parent;
+        }
+        return cleared;
+    }
+
+    @Override
+    public Move move() {
+        sheeps = getGameBoard().getSheepPositions();
+        ArrayList<GameLocation> pasture = getGameBoard().getPasturePositions();;
+        primaryT = sheeps.get(0);
+        secondaryT = pasture.get(0);
+        firstT = sheeps.get(0);
+        for (int i = 1; i < sheeps.size(); i++) {
+            if (piThag(secondaryT, primaryT) > piThag(secondaryT, sheeps.get(i))) {
+                firstT = sheeps.get(i);
+                if (piThag(getLocation(), primaryT) > piThag(getLocation(), sheeps.get(i))) {
+                    primaryT = sheeps.get(i);
+                    if (piThag(getLocation(), primaryT) < (piThag(getLocation(), firstT))-5) {
+                        primaryT = sheeps.get(i);
+                    } 
+                    else {
+                        primaryT = firstT;
+
+                    }
+
+                }
+            }
+        }
+        path = clear(pathing());
+        if (!path.isEmpty()) {
+            return moveTo(path.get(0));
+        }
+        return new Move(0, 0);
+    }
+
+    public ArrayList<Waypoint> pathing() {
+        open.clear();
+        open.add(new Waypoint(getLocation()));
+        Waypoint goal = new Waypoint(primaryT);
+        Waypoint current = new Waypoint(getLocation());
+        ArrayList<Waypoint> way;
+        closed.clear();
+        while (true) {
+            if (open.isEmpty()) {
+                open.add(new Waypoint(getLocation()));
+            }
+            current = open.get(0);
+            for (Waypoint opened : open) {
+                if (opened.f < current.f) {
+                    current = opened;
+                }
+            }
+            closed.add(current);
+            open.remove(current);
+            if (current.equals(goal)) {
+                break;
+            }
+            way = obsticals(current);
+            for (Waypoint move : way) {
+                if (!open.contains(move)) {
+                    if (!closed.contains(move)) {
+                        open.add(move);
+
+                    }
+                }
+                if (open.contains(move)) {
+                    if (open.get(open.indexOf(move)).f > move.f) {
+                        open.remove(open.get(open.indexOf(move)));
+                        open.add(move);
+
+                    }
+                }
+            }
+        }
+        return closed;
+    }
+
+    public ArrayList obsticals(Waypoint next) {
+        ArrayList<GameLocation> obstruction = getGameBoard().getObstaclePositions();
+        close = obstruction.get(0);
+        sheeps = getGameBoard().getSheepPositions();
+        ArrayList<Waypoint> surroundings = new ArrayList();
+        int x = next.x;
+        int y = next.y;
+        for (int i = 0; i < obstruction.size(); i++) {
+            if (piThag(getLocation(), close) >= piThag(getLocation(), obstruction.get(i))) {
+                close = obstruction.get(i);
+            }
+        }
+        if ((piThag(getLocation(), close) <= 2.0) || (piThag(getLocation(), primaryT) <= 2.0)) {
+            if ((x + 1 < getGameBoard().getCols()) && (getGameBoard().isEmptyCell(x + 1, y) || sheeps.contains(new GameLocation(x + 1, y)))) {
+                surroundings.add(new Waypoint(new GameLocation(x + 1, y), getLocation(), primaryT, next));
+            }
+            if ((x - 1 >= 0) && (getGameBoard().isEmptyCell(x - 1, y) || sheeps.contains(new GameLocation(x - 1, y)))) {
+                surroundings.add(new Waypoint(new GameLocation(x - 1, y), getLocation(), primaryT, next));
+            }
+            if ((x + 1 < getGameBoard().getCols() && y + 1 < getGameBoard().getRows())) {
+                if ((getGameBoard().isEmptyCell(x + 1, y + 1)) || sheeps.contains(new GameLocation(x + 1, y + 1))) {
+                    surroundings.add(new Waypoint(new GameLocation(x + 1, y + 1), getLocation(), primaryT, next));
+                }
+            }
+            if (x - 1 >= 0 && y - 1 >= 0) {
+                if (getGameBoard().isEmptyCell(x - 1, y - 1) || sheeps.contains(new GameLocation(x - 1, y - 1))) {
+                    surroundings.add(new Waypoint(new GameLocation(x - 1, y - 1), getLocation(), primaryT, next));
+                }
+            }
+            if (x + 1 < getGameBoard().getCols() && y - 1 >= 0) {
+                if (getGameBoard().isEmptyCell(x + 1, y - 1) || sheeps.contains(new GameLocation(x + 1, y - 1))) {
+                    surroundings.add(new Waypoint(new GameLocation(x + 1, y - 1), getLocation(), primaryT, next));
+                }
+            }
+            if (y + 1 < getGameBoard().getRows() && x - 1 >= 0) {
+                if (getGameBoard().isEmptyCell(x - 1, y + 1) || sheeps.contains(new GameLocation(x - 1, y + 1))) {
+                    surroundings.add(new Waypoint(new GameLocation(x - 1, y + 1), getLocation(), primaryT, next));
+                }
+            }
+            if ((y + 1 < getGameBoard().getRows()) && (getGameBoard().isEmptyCell(x, y + 1) || sheeps.contains(new GameLocation(x, y + 1)))) {
+                surroundings.add(new Waypoint(new GameLocation(x, y + 1), getLocation(), primaryT, next));
+            }
+            if ((y - 1 >= 0) && (getGameBoard().isEmptyCell(x, y - 1) || sheeps.contains(new GameLocation(x, y - 1)))) {
+                surroundings.add(new Waypoint(new GameLocation(x, y - 1), getLocation(), primaryT, next));
+            }
+        } else {
+            surroundings.add(new Waypoint(new GameLocation(x + 1, y), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x - 1, y), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x + 1, y + 1), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x - 1, y - 1), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x + 1, y - 1), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x - 1, y + 1), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x, y + 1), getLocation(), primaryT, next));
+            surroundings.add(new Waypoint(new GameLocation(x, y - 1), getLocation(), primaryT, next));
+
+        }
+        return surroundings;
+    }
+
+    public Move moveTo(Waypoint goal) {
+        GameLocation go = this.getLocation();
+        GameLocation wolf = board.getWolfPosition();
+        int posX = goal.x - go.x;
+        int posY = goal.y - go.y;
+
+        if (((this.getLocation().x + this.getLocation().y) - (wolf.x + wolf.y)) >= 2) {
+            if (posX >= 0) {
+                if (posY >= 0) {
+                    if (posX > posY) {
+                        return new Move(this.getMaxAllowedDistance(), 0);
+                    }
+                    if (posY > posX) {
+                        return new Move(0, this.getMaxAllowedDistance());
+                    } else {
+                        return new Move(this.getMaxAllowedDistance(), this.getMaxAllowedDistance());
+                    }
+                }
+            }
+            if (posX < 0) {
+                if (posY >= 0) {
+                    if (Math.abs(posX) > posY) {
+                        return new Move((this.getMaxAllowedDistance() * o), 0);
+                    }
+                    if (posY > Math.abs(posX)) {
+                        return new Move(0, this.getMaxAllowedDistance());
+                    } else {
+                        return new Move((this.getMaxAllowedDistance() * o), this.getMaxAllowedDistance());
+                    }
+                }
+            }
+            if (posX < 0) {
+                if (posY < 0) {
+                    if (Math.abs(posX) > Math.abs(posY)) {
+                        return new Move((this.getMaxAllowedDistance() * o), 0);
+                    }
+                    if (Math.abs(posY) > Math.abs(posX)) {
+                        return new Move(0, (this.getMaxAllowedDistance() * o));
+                    } else {
+                        return new Move((this.getMaxAllowedDistance() * o), (this.getMaxAllowedDistance() * o));
+                    }
+                }
+            }
+            if (posX >= 0) {
+                if (posY < 0) {
+                    if (Math.abs(posY) > posX) {
+                        return new Move(0, (this.getMaxAllowedDistance() * o));
+                    }
+                    if (posX > Math.abs(posY)) {
+                        return new Move(this.getMaxAllowedDistance(), 0);
+                    } else {
+                        return new Move(this.getMaxAllowedDistance(), (this.getMaxAllowedDistance() * o));
+                    }
+                }
+            }
+        }
+        if (((this.getLocation().x + this.getLocation().y) - (wolf.x + wolf.y)) < 2) {
+            if (posX >= 0) {
+                if (posY >= 0) {
+                    if (posX > posY) {
+                        return new Move(1, 0);
+                    }
+                    if (posY > posX) {
+                        return new Move(0, 1);
+                    } else {
+                        return new Move(1, 1);
+                    }
+                }
+            }
+            if (posX < 0) {
+                if (posY >= 0) {
+                    if (Math.abs(posX) > posY) {
+                        return new Move(-1, 0);
+                    }
+                    if (posY > Math.abs(posX)) {
+                        return new Move(0, 1);
+                    } else {
+                        return new Move(-1, 1);
+                    }
+                }
+            }
+            if (posX < 0) {
+                if (posY < 0) {
+                    if (Math.abs(posX) > Math.abs(posY)) {
+                        return new Move(-1, 0);
+                    }
+                    if (Math.abs(posY) > Math.abs(posX)) {
+                        return new Move(0, -1);
+                    } else {
+                        return new Move(-1, -1);
+                    }
+                }
+            }
+            if (posX >= 0) {
+                if (posY < 0) {
+                    if (Math.abs(posY) > posX) {
+                        return new Move(0, -1);
+                    }
+                    if (posX > Math.abs(posY)) {
+                        return new Move(1, 0);
+                    } else {
+                        return new Move(1, -1);
+                    }
+                }
+            }
+        }
+        return new Move(0, 0);
+    }
+}
