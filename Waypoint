@@ -1,0 +1,75 @@
+package ribau;
+
+import was.GameLocation;
+
+/**
+ *
+ * @author ribau
+ */
+public class Waypoint extends Object {
+
+    int x;
+    ;
+    int y;
+    int h;
+    int g;
+    int f;
+    Waypoint parent;
+
+    public Waypoint(GameLocation loc) {
+        this.x = loc.x;
+        this.y = loc.y;
+        parent = null;
+        f = 0;
+    }
+
+    public Waypoint(GameLocation loc, GameLocation start, GameLocation dest, Waypoint parent) {
+        this.x = loc.x;
+        this.y = loc.y;
+        this.parent = parent;
+        f = cal(start, dest);
+    }
+
+    public int cal(GameLocation start, GameLocation end) {
+        return FCost(HCost(end), GCost(start));
+    }
+
+    private int HCost(GameLocation loc) {
+        int lx = loc.x - x;
+        int ly = loc.y - y;
+        return h = (int) ((lx * lx) * (ly * ly) * 20);
+
+    }
+
+    private int GCost(GameLocation loc) {
+        return g = (int) (Math.sqrt(Math.pow(this.x - loc.x, 2) + Math.pow(this.y - loc.y, 2)) * 20);
+    }
+
+    private int FCost(int h, int g) {
+
+        return f = h + g;
+    }
+
+    public int X() {
+        return x;
+    }
+
+    public int Y() {
+        return y;
+    }
+
+    @Override
+    public boolean equals(Object f) {
+        if (x == ((Waypoint) f).X() && y == ((Waypoint) f).Y()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return (x + ": " + y + ": " + h + ": " + g + ": " + f);
+    }
+
+}
